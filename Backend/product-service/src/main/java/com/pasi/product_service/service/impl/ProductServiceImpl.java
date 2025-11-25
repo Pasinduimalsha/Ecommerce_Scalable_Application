@@ -4,7 +4,7 @@ import com.pasi.product_service.dto.ProductCreatedEvent;
 import com.pasi.product_service.dto.ProductDTO;
 import com.pasi.product_service.dto.ReviewStatusDTO;
 import com.pasi.product_service.entity.Product;
-import com.sysco.product_service.exception.*;
+import com.pasi.product_service.exception.*;
 import com.pasi.product_service.mapper.ProductMapper;
 import com.pasi.product_service.repository.ProductRepository;
 import com.pasi.product_service.service.EventPublisher;
