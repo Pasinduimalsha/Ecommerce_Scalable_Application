@@ -15,9 +15,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     boolean existsByName(String name);
 
-    // @Query("SELECT c FROM Category c LEFT JOIN FETCH c.products WHERE c.name = :name")
-    // Optional<Category> findByNameWithProducts(@Param("name") String name);
-
     @Query("SELECT c FROM Category c LEFT JOIN FETCH c.products WHERE c.id = :id")
     Optional<Category> findByIdWithProducts(@Param("id") Long id);
 }
