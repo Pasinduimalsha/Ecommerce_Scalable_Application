@@ -1,0 +1,12 @@
+# CODEOWNERS file
+# This file defines the code owners who will be automatically requested for review
+# when someone opens a pull request that modifies code owned by these individuals.
+
+# Default code owners for all files
+# @Pasinduimalsha is the default owner
+* @Pasinduimalsha
+
+# GitHub Copilot as a reviewer
+# To enable Copilot code reviews, ensure "Copilot code review" is enabled in repository settings
+# Navigate to: Settings > Code review > Copilot code review
+# Copilot will automatically review pull requests when enabled
