@@ -31,8 +31,11 @@ logs/
 
 # Build artifacts
 dist/
-build/
 target/
+
+# Gradle
+.gradle/
+**/build/
 
 # Dependencies (will be handled by individual service gitignores)
 node_modules/
