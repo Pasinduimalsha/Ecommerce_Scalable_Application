@@ -13,10 +13,6 @@
 <!-- Link any related issues here using #issue_number -->
 Fixes #
 
-## Changes Made
-<!-- List the main changes made in this PR -->
-- 
-
 ## Testing
 <!-- Describe how this change was tested -->
 - [ ] Unit tests added/updated

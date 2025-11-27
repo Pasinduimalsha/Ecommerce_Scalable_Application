@@ -1,0 +1,1004 @@
+openapi: 3.0.3
+info:
+  title: Ecommerce Scalable Application API
+  description: Consolidated API specification for Product, Category, Inventory, and Order services for the Ecommerce Scalable Application.
+  version: 1.0.0
+servers:
+  - url: https://api.example.com
+    description: Production server
+  - url: http://localhost:4000
+    description: BFF local server
+  - url: http://localhost:8081/api/v1/products
+    description: Product service local base URL
+  - url: http://localhost:8082/api/v1/inventory
+    description: Inventory service local base URL
+  - url: http://localhost:8083/api/v1/order
+    description: Order service local base URL
+  
+paths:
+  # -----------------------------
+  # Products (core service)
+  # -----------------------------
+  /api/v1/products:
+    get:
+      tags:
+        - Products
+      summary: Get approved products
+      description: Returns a list of approved products visible to customers, suppliers, and data stewards.
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Optional search string to look up products by name, id, category or category id
+      responses:
+        '200':
+          description: OK - list of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Products
+      summary: Add a new product (Supplier)
+      description: Supplier can create a product which will be created in a pending state for review.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Created - product created and pending review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/products/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: Returns a single product by id.
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    put:
+      tags:
+        - Products
+      summary: Update product (Supplier)
+      description: Edit product details while it is not approved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    delete:
+      tags:
+        - Products
+      summary: Delete product (Supplier)
+      description: Remove a product before approval.
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/products/{productId}/review:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: decision
+        in: query
+        required: true
+        schema:
+          type: string
+          enum: [APPROVE, REJECT]
+    put:
+      tags:
+        - Products
+      summary: Review product (Data Steward)
+      description: Approve or reject a product. Only Data Steward role should call this.
+      responses:
+        '200':
+          description: Review decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/products/categories/{categoryName}:
+    parameters:
+      - name: categoryName
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Products
+      summary: Get products by category name
+      description: Returns products filtered by category name.
+      responses:
+        '200':
+          description: Products for category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # -----------------------------
+  # Categories
+  # -----------------------------
+  /api/v1/categories:
+    get:
+      tags:
+        - Categories
+      summary: Get all categories (Admin)
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+    post:
+      tags:
+        - Categories
+      summary: Create a new category (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+
+  /api/v1/categories/{categoryId}:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      tags:
+        - Categories
+      summary: Update category (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    delete:
+      tags:
+        - Categories
+      summary: Delete category (Admin)
+      responses:
+        '204':
+          description: Category deleted
+
+  # -----------------------------
+  # Inventory
+  # -----------------------------
+  /api/v1/inventory:
+    post:
+      tags:
+        - Inventory
+      summary: Create inventory entry (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryCreate'
+      responses:
+        '201':
+          description: Inventory created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventory'
+
+  /api/v1/inventory/{skuCode}:
+    parameters:
+      - name: skuCode
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Inventory
+      summary: Get inventory entry
+      responses:
+        '200':
+          description: Inventory found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventory'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Inventory
+      summary: Update inventory (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryUpdate'
+      responses:
+        '200':
+          description: Inventory updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventory'
+    delete:
+      tags:
+        - Inventory
+      summary: Delete inventory entry (Admin)
+      responses:
+        '204':
+          description: Inventory deleted
+
+  # -----------------------------
+  # Orders (core service)
+  # -----------------------------
+  /api/v1/order:
+    post:
+      tags:
+        - Orders
+      summary: Create a new cart (Order service)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Cart created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /api/v1/order/{cartId}:
+    parameters:
+      - name: cartId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Orders
+      summary: Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItem'
+      responses:
+        '200':
+          description: Item added to cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+    get:
+      tags:
+        - Orders
+      summary: Get cart items
+      responses:
+        '200':
+          description: Cart details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+    delete:
+      tags:
+        - Orders
+      summary: Delete whole cart
+      responses:
+        '204':
+          description: Cart deleted
+
+  /api/v1/order/{cartId}/{skuCode}:
+    parameters:
+      - name: cartId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: skuCode
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags:
+        - Orders
+      summary: Remove item from cart
+      responses:
+        '204':
+          description: Item removed from cart
+
+  # -----------------------------
+  # BFF (edge) endpoints
+  # -----------------------------
+  /api/products:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get products (search or all)
+      description: BFF endpoint that proxies product listing and search. If `search` query param is present it performs a search.
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Optional search term
+      responses:
+        '200':
+          description: OK - list of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags:
+        - BFF
+      summary: BFF - Create product
+      description: Proxy to product-service to create a product (called by Supplier)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /api/products/health:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Products health check
+      responses:
+        '200':
+          description: OK
+
+  /api/products/approved:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get approved products
+      responses:
+        '200':
+          description: OK - list of approved products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+
+  /api/products/status/{status}:
+    parameters:
+      - name: status
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get products by status
+      responses:
+        '200':
+          description: OK
+
+  /api/products/categories/{categoryName}:
+    parameters:
+      - name: categoryName
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get products by category name
+      responses:
+        '200':
+          description: OK - products list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+
+  /api/products/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get product by id
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+    put:
+      tags:
+        - BFF
+      summary: BFF - Update product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: Product updated
+    delete:
+      tags:
+        - BFF
+      summary: BFF - Delete product
+      responses:
+        '204':
+          description: Deleted
+
+  /api/products/{id}/review:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: decision
+        in: query
+        required: true
+        schema:
+          type: string
+          enum: [APPROVE, REJECT]
+    put:
+      tags:
+        - BFF
+      summary: BFF - Review product
+      responses:
+        '200':
+          description: Review applied
+
+  /api/inventory:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get all inventories
+      responses:
+        '200':
+          description: OK - list of inventory entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Inventory'
+    post:
+      tags:
+        - BFF
+      summary: BFF - Create inventory entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryCreate'
+      responses:
+        '201':
+          description: Inventory created
+
+  /api/inventory/health:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Inventory health check
+      responses:
+        '200':
+          description: OK
+
+  /api/inventory/{sku}/exists:
+    parameters:
+      - name: sku
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Check inventory exists
+      responses:
+        '200':
+          description: Exists flag
+
+  /api/inventory/{sku}:
+    parameters:
+      - name: sku
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get inventory by SKU
+      responses:
+        '200':
+          description: Inventory found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventory'
+    put:
+      tags:
+        - BFF
+      summary: BFF - Update inventory quantity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryUpdate'
+      responses:
+        '200':
+          description: Inventory updated
+
+  /api/orders:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Health check for orders (mapped to /health)
+      responses:
+        '200':
+          description: OK
+    post:
+      tags:
+        - BFF
+      summary: BFF - Create cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Cart created
+
+  /api/orders/health:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Orders health
+      responses:
+        '200':
+          description: OK
+
+  /api/orders/customer/{customerId}:
+    parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get cart by customer id
+      responses:
+        '200':
+          description: Cart found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /api/orders/{cartId}:
+    parameters:
+      - name: cartId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get cart by id
+      responses:
+        '200':
+          description: Cart found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+    post:
+      tags:
+        - BFF
+      summary: BFF - Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItem'
+      responses:
+        '200':
+          description: Item added
+    delete:
+      tags:
+        - BFF
+      summary: BFF - Delete cart
+      responses:
+        '204':
+          description: Cart deleted
+
+  /api/orders/{cartId}/{skuCode}:
+    parameters:
+      - name: cartId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: skuCode
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags:
+        - BFF
+      summary: BFF - Remove item from cart
+      responses:
+        '204':
+          description: Item removed
+
+  /api/categories:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get all categories
+      responses:
+        '200':
+          description: OK - list of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+    post:
+      tags:
+        - BFF
+      summary: BFF - Create category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Category created
+  /api/categories/health:
+    get:
+      tags:
+        - BFF
+      summary: BFF - Categories health
+      responses:
+        '200':
+          description: OK
+  /api/categories/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - BFF
+      summary: BFF - Get category by id
+      responses:
+        '200':
+          description: Category found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    put:
+      tags:
+        - BFF
+      summary: BFF - Update category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          description: Category updated
+    delete:
+      tags:
+        - BFF
+      summary: BFF - Delete category
+      responses:
+        '204':
+          description: Category deleted
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        productId:
+          type: integer
+          example: 123
+        productName:
+          type: string
+          example: "Chicken Breast"
+        productPrice:
+          type: number
+          format: double
+          example: 12.5
+        productCategory:
+          type: string
+          example: "Meats"
+        quantity:
+          type: integer
+          example: 100
+        imageUrl:
+          type: string
+          format: uri
+        producerId:
+          type: integer
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+    ProductList:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+    ProductCreate:
+      type: object
+      required: [productName, productCategory, productPrice, quantity, imageUrl, producerId]
+      properties:
+        productName:
+          type: string
+        productCategory:
+          type: string
+        productPrice:
+          type: number
+          format: double
+        quantity:
+          type: integer
+        imageUrl:
+          type: string
+          format: uri
+        producerId:
+          type: integer
+    ProductUpdate:
+      type: object
+      properties:
+        productName:
+          type: string
+        productCategory:
+          type: string
+        productPrice:
+          type: number
+          format: double
+        quantity:
+          type: integer
+        imageUrl:
+          type: string
+          format: uri
+    Category:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+        name:
+          type: string
+    CategoryCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+    Inventory:
+      type: object
+      properties:
+        skuCode:
+          type: string
+        productId:
+          type: integer
+        quantity:
+          type: integer
+        location:
+          type: string
+    InventoryCreate:
+      type: object
+      required: [skuCode, productId, quantity]
+      properties:
+        skuCode:
+          type: string
+        productId:
+          type: integer
+        quantity:
+          type: integer
+        location:
+          type: string
+    InventoryUpdate:
+      type: object
+      properties:
+        quantity:
+          type: integer
+        location:
+          type: string
+    OrderCreate:
+      type: object
+      required: [customerId]
+      properties:
+        customerId:
+          type: integer
+    CartItem:
+      type: object
+      required: [skuCode, quantity]
+      properties:
+        skuCode:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+          format: double
+    Order:
+      type: object
+      properties:
+        cartId:
+          type: string
+        customerId:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total:
+          type: number
+          format: double
+    ErrorResponse:
+      type: object
+      properties:
+        errorMessage:
+          type: string
+        error:
+          type: string
+        status:
+          type: integer
+        zonedDateTime:
+          type: string
+          format: date-time
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+tags:
+  - name: Products
+    description: Product management and retrieval
+  - name: Categories
+    description: Category management
+  - name: Inventory
+    description: Inventory management
+  - name: Orders
+    description: Order and cart management
