@@ -125,17 +125,29 @@ paths:
         required: true
         schema:
           type: integer
-      - name: decision
+      - name: status
         in: query
         required: true
         schema:
           type: string
-          enum: [APPROVE, REJECT]
+          enum: [APPROVED, REJECTED]
     put:
       tags:
         - Products
       summary: Review product (Data Steward)
-      description: Approve or reject a product. Only Data Steward role should call this.
+      description: |
+        Approve or reject a product. Only Data Steward role should call this.
+        When a product is approved the product-service will publish a ProductCreatedEvent
+        so the inventory-service can create a corresponding inventory entry containing
+        only the `sku` and initial `stockQuantity` (see `ProductCreatedEvent` schema).
+        The reviewer may optionally provide `initialStock` in the request body to set
+        the starting inventory quantity.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewStatus'
       responses:
         '200':
           description: Review decision recorded
@@ -534,16 +546,22 @@ paths:
         required: true
         schema:
           type: string
-      - name: decision
+      - name: status
         in: query
         required: true
         schema:
           type: string
-          enum: [APPROVE, REJECT]
+          enum: [APPROVED, REJECTED]
     put:
       tags:
         - BFF
       summary: BFF - Review product
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewStatus'
       responses:
         '200':
           description: Review applied
@@ -819,30 +837,40 @@ components:
     Product:
       type: object
       properties:
-        productId:
+        id:
           type: integer
           example: 123
-        productName:
+        name:
           type: string
           example: "Chicken Breast"
-        productPrice:
+        description:
+          type: string
+          example: "Fresh boneless chicken breast"
+        price:
           type: number
           format: double
           example: 12.5
-        productCategory:
+        categoryName:
           type: string
           example: "Meats"
-        quantity:
-          type: integer
-          example: 100
+        brand:
+          type: string
+          example: "Acme Farms"
         imageUrl:
           type: string
           format: uri
-        producerId:
-          type: integer
+        sku:
+          type: string
+          example: "CHKN-BST-001"
         status:
           type: string
           enum: [PENDING, APPROVED, REJECTED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     ProductList:
       type: object
       properties:
@@ -852,37 +880,53 @@ components:
             $ref: '#/components/schemas/Product'
     ProductCreate:
       type: object
-      required: [productName, productCategory, productPrice, quantity, imageUrl, producerId]
+      required: [name, categoryName, price, brand, sku]
       properties:
-        productName:
+        name:
           type: string
-        productCategory:
+        description:
           type: string
-        productPrice:
+        price:
           type: number
           format: double
-        quantity:
-          type: integer
+        categoryName:
+          type: string
+        brand:
+          type: string
         imageUrl:
           type: string
           format: uri
-        producerId:
-          type: integer
+        sku:
+          type: string
     ProductUpdate:
       type: object
       properties:
-        productName:
+        name:
           type: string
-        productCategory:
+        description:
           type: string
-        productPrice:
+        price:
           type: number
           format: double
-        quantity:
-          type: integer
+        categoryName:
+          type: string
+        brand:
+          type: string
         imageUrl:
           type: string
           format: uri
+        sku:
+          type: string
+    ReviewStatus:
+      type: object
+      properties:
+        reviewComment:
+          type: string
+        reviewedBy:
+          type: string
+        initialStock:
+          type: integer
+          description: "Optional initial stock quantity to send to inventory when approving a product"
     Category:
       type: object
       properties:
@@ -914,16 +958,12 @@ components:
           type: string
     InventoryCreate:
       type: object
-      required: [skuCode, productId, quantity]
+      required: [skuCode,quantity]
       properties:
         skuCode:
           type: string
-        productId:
-          type: integer
         quantity:
           type: integer
-        location:
-          type: string
     InventoryUpdate:
       type: object
       properties:

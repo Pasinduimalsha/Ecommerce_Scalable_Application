@@ -43,7 +43,6 @@ public class Cart {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Helper methods for managing cart items
     public void addItem(CartItem item) {
         items.add(item);
         item.setCart(this);

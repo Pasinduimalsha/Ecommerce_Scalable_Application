@@ -31,8 +31,8 @@ public class EventPublisher {
             
             rabbitTemplate.convertAndSend(exchange, productRoutingKey, event);
             
-            log.info("Successfully published ProductCreatedEvent for SKU: {} with Product ID: {}", 
-                    event.getSku(), event.getProductId());
+            log.info("Successfully published ProductCreatedEvent for SKU: {}",
+                    event.getSku());
                     
         } catch (Exception e) {
             log.error("Failed to publish ProductCreatedEvent for SKU: {} - Error: {}", 

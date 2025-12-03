@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+
 @Entity
 @Table(name = "products")
 @Data
@@ -48,10 +49,6 @@ public class Product {
 
     @Column(name = "image_url")
     private String imageUrl;
-
-    @NotNull(message = "Stock quantity is required")
-    @Column(name = "stock_quantity", nullable = false)
-    private Integer stockQuantity;
 
     @NotNull(message = "Sku code is required")
     @Column(name = "sku", nullable = false, unique = true)

@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface CartRepository extends JpaRepository<Cart, Long> {
     
-    Optional<Cart> findByCustomerId(String customerId);
+    Optional<Cart> findCartByCustomerId(String customerId);
     
     @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items WHERE c.id = :cartId")
     Optional<Cart> findByIdWithItems(@Param("cartId") Long cartId);
@@ -20,4 +20,5 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     Optional<Cart> findByCustomerIdWithItems(@Param("customerId") String customerId);
     
     boolean existsByCustomerId(String customerId);
+
 }

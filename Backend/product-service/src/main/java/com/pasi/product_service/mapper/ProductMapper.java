@@ -29,7 +29,6 @@ public class ProductMapper {
                 .brand(product.getBrand())
                 .imageUrl(product.getImageUrl())
                 .sku(product.getSku())
-                .stockQuantity(product.getStockQuantity())
                 .status(product.getStatus() != null ? product.getStatus().name() : null)
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
@@ -49,7 +48,6 @@ public class ProductMapper {
                 .brand(productDTO.getBrand())
                 .imageUrl(productDTO.getImageUrl())
                 .sku(productDTO.getSku())
-                .stockQuantity(productDTO.getStockQuantity())
                 .createdAt(productDTO.getCreatedAt())
                 .updatedAt(productDTO.getUpdatedAt());
         

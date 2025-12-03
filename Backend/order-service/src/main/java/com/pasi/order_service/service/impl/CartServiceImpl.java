@@ -4,7 +4,6 @@ import com.pasi.order_service.exception.CartAlreadyExistsException;
 import com.pasi.order_service.repository.CartItemRepository;
 import com.pasi.order_service.repository.CartRepository;
 import com.pasi.order_service.dto.AddItemToCartRequest;
-import com.pasi.order_service.dto.CartItemResponse;
 import com.pasi.order_service.dto.CartResponse;
 import com.pasi.order_service.dto.CreateCartRequest;
 import com.pasi.order_service.entity.Cart;
@@ -12,15 +11,14 @@ import com.pasi.order_service.entity.CartItem;
 import com.pasi.order_service.exception.CartNotFoundException;
 import com.pasi.order_service.exception.ItemNotFoundException;
 import com.pasi.order_service.service.CartService;
+import com.pasi.order_service.mapper.CartMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +28,7 @@ public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
+    private final CartMapper cartMapper;
 
     @Override
     public CartResponse createCart(CreateCartRequest request) {
@@ -48,25 +47,25 @@ public class CartServiceImpl implements CartService {
         Cart savedCart = cartRepository.save(cart);
         log.info("Cart created successfully with ID: {}", savedCart.getId());
 
-        return mapToCartResponse(savedCart);
+        return cartMapper.mapToCartResponse(savedCart);
     }
 
     @Override
-    public CartResponse addItemToCart(Long cartId, AddItemToCartRequest request) {
-        log.info("Adding item {} to cart {}", request.getSkuCode(), cartId);
+    public CartResponse addItemToCart(String customerId, AddItemToCartRequest request) {
+        log.info("Adding item {} to cart by customer {}", request.getSkuCode(), customerId);
 
-        Cart cart = cartRepository.findByIdWithItems(cartId)
-                .orElseThrow(() -> new CartNotFoundException("Cart not found with ID: " + cartId));
+        Cart cart = cartRepository.findCartByCustomerId(customerId)
+                .orElseThrow(() -> new CartNotFoundException("Cart not found with customerId: " + customerId));
 
         // Check if item already exists in cart
-        Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndSkuCode(cartId, request.getSkuCode());
+        Optional<CartItem> existingItem = cartItemRepository.findItemByCustomerIdAndSkuCode(customerId, request.getSkuCode());
 
         if (existingItem.isPresent()) {
             // Update quantity if item already exists
             CartItem item = existingItem.get();
             item.updateQuantity(item.getQuantity() + request.getQuantity());
             cartItemRepository.save(item);
-            log.info("Updated quantity for existing item {} in cart {}", request.getSkuCode(), cartId);
+            log.info("Updated quantity for existing item {} in cart by customerId {}", request.getSkuCode(), customerId);
         } else {
             // Add new item to cart
             CartItem newItem = CartItem.builder()
@@ -79,54 +78,45 @@ public class CartServiceImpl implements CartService {
 
             cart.addItem(newItem);
             cartItemRepository.save(newItem);
-            log.info("Added new item {} to cart {}", request.getSkuCode(), cartId);
+            log.info("Added new item {} to cart by customer {}", request.getSkuCode(), customerId);
         }
 
         cart.calculateTotal();
         Cart savedCart = cartRepository.save(cart);
 
-        return mapToCartResponse(savedCart);
+        return cartMapper.mapToCartResponse(savedCart);
+    }
+
+    
+
+    @Override
+    public void removeItemFromCart(String customerId, String skuCode) {
+    log.info("Removing item {} from cart for customer {}", skuCode, customerId);
+
+    Cart cart = cartRepository.findByCustomerIdWithItems(customerId)
+        .orElseThrow(() -> new CartNotFoundException("Cart not found for customer: " + customerId));
+
+    CartItem item = cartItemRepository.findItemByCustomerIdAndSkuCode(customerId, skuCode)
+        .orElseThrow(() -> new ItemNotFoundException("Item not found in cart - SKU: " + skuCode));
+
+    cart.removeItem(item);
+    cartItemRepository.delete(item);
+
+    cart.calculateTotal();
+    cartRepository.save(cart);
+
+    log.info("Item {} removed from cart for customer {}", skuCode, customerId);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public CartResponse getCartById(Long cartId) {
-        log.info("Retrieving cart with ID: {}", cartId);
+    public void removeCart(String customerId) {
+        log.info("Removing cart for customer: {}", customerId);
 
-        Cart cart = cartRepository.findByIdWithItems(cartId)
-                .orElseThrow(() -> new CartNotFoundException("Cart not found with ID: " + cartId));
-
-        return mapToCartResponse(cart);
-    }
-
-    @Override
-    public void removeItemFromCart(Long cartId, String skuCode) {
-        log.info("Removing item {} from cart {}", skuCode, cartId);
-
-        Cart cart = cartRepository.findByIdWithItems(cartId)
-                .orElseThrow(() -> new CartNotFoundException("Cart not found with ID: " + cartId));
-
-        CartItem item = cartItemRepository.findByCartIdAndSkuCode(cartId, skuCode)
-                .orElseThrow(() -> new ItemNotFoundException("Item not found in cart - SKU: " + skuCode));
-
-        cart.removeItem(item);
-        cartItemRepository.delete(item);
-        
-        cart.calculateTotal();
-        cartRepository.save(cart);
-
-        log.info("Item {} removed from cart {}", skuCode, cartId);
-    }
-
-    @Override
-    public void removeCart(Long cartId) {
-        log.info("Removing cart with ID: {}", cartId);
-
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new CartNotFoundException("Cart not found with ID: " + cartId));
+        Cart cart = cartRepository.findCartByCustomerId(customerId)
+                .orElseThrow(() -> new CartNotFoundException("Cart not found for customer: " + customerId));
 
         cartRepository.delete(cart);
-        log.info("Cart {} removed successfully", cartId);
+        log.info("Cart for customer {} removed successfully", customerId);
     }
 
     @Override
@@ -137,35 +127,6 @@ public class CartServiceImpl implements CartService {
         Cart cart = cartRepository.findByCustomerIdWithItems(customerId)
                 .orElseThrow(() -> new CartNotFoundException("Cart not found for customer: " + customerId));
 
-        return mapToCartResponse(cart);
-    }
-
-    private CartResponse mapToCartResponse(Cart cart) {
-        List<CartItemResponse> itemResponses = cart.getItems().stream()
-                .map(this::mapToCartItemResponse)
-                .collect(Collectors.toList());
-
-        return CartResponse.builder()
-                .cartId(cart.getId())
-                .customerId(cart.getCustomerId())
-                .items(itemResponses)
-                .totalAmount(cart.getTotalAmount())
-                .totalItems(cart.getTotalItems())
-                .createdAt(cart.getCreatedAt())
-                .updatedAt(cart.getUpdatedAt())
-                .build();
-    }
-
-    private CartItemResponse mapToCartItemResponse(CartItem item) {
-        return CartItemResponse.builder()
-                .itemId(item.getId())
-                .skuCode(item.getSkuCode())
-                .productName(item.getProductName())
-                .unitPrice(item.getUnitPrice())
-                .quantity(item.getQuantity())
-                .subTotal(item.getSubTotal())
-                .createdAt(item.getCreatedAt())
-                .updatedAt(item.getUpdatedAt())
-                .build();
+        return cartMapper.mapToCartResponse(cart);
     }
 }

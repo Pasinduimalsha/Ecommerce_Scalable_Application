@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @Data
 @Builder
@@ -22,4 +23,7 @@ public class ReviewStatusDTO {
     private String reviewComment;
 
     private String reviewedBy;
+
+    @PositiveOrZero(message = "Initial stock must be zero or positive")
+    private Integer initialStock;
 }
