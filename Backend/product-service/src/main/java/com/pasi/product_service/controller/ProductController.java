@@ -4,7 +4,7 @@ import com.pasi.product_service.dto.ProductDTO;
 import com.pasi.product_service.dto.ReviewStatusDTO;
 import com.pasi.product_service.entity.Product;
 import com.pasi.product_service.service.ProductService;
-import com.sysco.product_service.exception.*;
+import com.pasi.product_service.exception.*;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

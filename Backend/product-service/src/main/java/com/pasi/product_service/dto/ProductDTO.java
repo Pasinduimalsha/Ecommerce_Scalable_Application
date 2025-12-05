@@ -40,10 +40,7 @@ public class ProductDTO {
 
     @NotNull(message = "Sku code is required")
     private String sku;
-    
-    @NotNull(message = "Stock quantity is required")
-    private Integer stockQuantity;
-    
+
     private String status;
     
     private LocalDateTime createdAt;

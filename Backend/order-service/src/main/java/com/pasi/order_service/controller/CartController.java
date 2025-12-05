@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/order")
+@RequestMapping("/api/v1/cart")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -47,23 +47,29 @@ public class CartController extends OrderAbstractController {
      * Add new item to cart
      * POST /api/v1/order/{cartId}
      */
-    @PostMapping("/{cartId}")
+
+    // Use customerId in paths because one customer maps to one cart
+    @PostMapping("/{customerId}")
     public ResponseEntity<Map<String, Object>> addItemToCart(
-            @PathVariable Long cartId,
+            @PathVariable String customerId,
             @Valid @RequestBody AddItemToCartRequest request) {
         try {
-            if (!isValidCartId(cartId)) {
-                return createCartValidationErrorResponse("Cart ID", "must be a positive number");
+            if (!isValidCustomerId(customerId)) {
+                return createCartValidationErrorResponse("Customer ID", "must be between 1 and 50 characters");
             }
-            
-            log.info("Adding item {} to cart: {}", request.getSkuCode(), cartId);
-            CartResponse cartResponse = cartService.addItemToCart(cartId, request);
+
+            // Resolve cart by customerId, service will throw CartNotFoundException if absent
+            CartResponse existingCart = cartService.getCartByCustomerId(customerId);
+            Long cartId = existingCart.getCartId();
+
+            log.info("Adding item {} to cart: {} (customer: {})", request.getSkuCode(), cartId, customerId);
+            CartResponse cartResponse = cartService.addItemToCart(customerId, request);
             return sendSuccessResponse(cartResponse, "Item added to cart successfully");
         } catch (CartNotFoundException e) {
-            log.error("Cart not found: {}", e.getMessage());
+            log.error("Cart not found for customer {}: {}", customerId, e.getMessage());
             return sendNotFoundResponse(e.getMessage());
         } catch (Exception e) {
-            log.error("Error adding item to cart {}: {}", cartId, e.getMessage());
+            log.error("Error adding item to cart for customer {}: {}", customerId, e.getMessage());
             return sendInternalServerErrorResponse("Failed to add item to cart due to an unexpected error");
         }
     }
@@ -72,76 +78,83 @@ public class CartController extends OrderAbstractController {
      * Get current customer's cart items
      * GET /api/v1/order/{cartId}
      */
-    @GetMapping("/{cartId}")
-    public ResponseEntity<Map<String, Object>> getCart(@PathVariable Long cartId) {
+    @GetMapping("/{customerId}")
+    public ResponseEntity<Map<String, Object>> getCart(@PathVariable String customerId) {
         try {
-            if (!isValidCartId(cartId)) {
-                return createCartValidationErrorResponse("Cart ID", "must be a positive number");
+            if (!isValidCustomerId(customerId)) {
+                return createCartValidationErrorResponse("Customer ID", "must be between 1 and 50 characters");
             }
-            
-            log.info("Retrieving cart: {}", cartId);
-            CartResponse cartResponse = cartService.getCartById(cartId);
+
+            log.info("Retrieving cart for customer: {}", customerId);
+            CartResponse cartResponse = cartService.getCartByCustomerId(customerId);
             return sendSuccessResponse(cartResponse, "Cart retrieved successfully");
         } catch (CartNotFoundException e) {
-            log.error("Cart not found: {}", e.getMessage());
+            log.error("Cart not found for customer {}: {}", customerId, e.getMessage());
             return sendNotFoundResponse(e.getMessage());
         } catch (Exception e) {
-            log.error("Error retrieving cart {}: {}", cartId, e.getMessage());
+            log.error("Error retrieving cart for customer {}: {}", customerId, e.getMessage());
             return sendInternalServerErrorResponse("Failed to retrieve cart due to an unexpected error");
         }
     }
 
     /**
      * Remove item from cart
-     * DELETE /api/v1/order/{cartId}/{skuCode}
+     * DELETE /api/v1/order/{customerId}/{skuCode}
      */
-    @DeleteMapping("/{cartId}/{skuCode}")
+    @DeleteMapping("/{customerId}/{skuCode}")
     public ResponseEntity<Map<String, Object>> removeItemFromCart(
-            @PathVariable Long cartId,
+            @PathVariable String customerId,
             @PathVariable String skuCode) {
         try {
-            if (!isValidCartId(cartId)) {
-                return createCartValidationErrorResponse("Cart ID", "must be a positive number");
+            if (!isValidCustomerId(customerId)) {
+                return createCartValidationErrorResponse("Customer ID", "must be between 1 and 50 characters");
             }
-            
+
             if (!isValidSkuCode(skuCode)) {
                 return createCartValidationErrorResponse("SKU Code", "must be between 2 and 50 characters");
             }
-            
-            log.info("Removing item {} from cart: {}", skuCode, cartId);
-            cartService.removeItemFromCart(cartId, skuCode);
+
+            // Resolve cart and perform removal
+            CartResponse existingCart = cartService.getCartByCustomerId(customerId);
+            Long cartId = existingCart.getCartId();
+
+            log.info("Removing item {} from cart: {} (customer: {})", skuCode, cartId, customerId);
+            cartService.removeItemFromCart(customerId, skuCode);
             return sendNoContentResponse("Item removed from cart successfully");
         } catch (CartNotFoundException e) {
-            log.error("Cart not found: {}", e.getMessage());
+            log.error("Cart not found for customer {}: {}", customerId, e.getMessage());
             return sendNotFoundResponse(e.getMessage());
         } catch (ItemNotFoundException e) {
-            log.error("Item not found: {}", e.getMessage());
+            log.error("Item not found for customer {}: {}", customerId, e.getMessage());
             return sendNotFoundResponse(e.getMessage());
         } catch (Exception e) {
-            log.error("Error removing item {} from cart {}: {}", skuCode, cartId, e.getMessage());
+            log.error("Error removing item {} for customer {}: {}", skuCode, customerId, e.getMessage());
             return sendInternalServerErrorResponse("Failed to remove item from cart due to an unexpected error");
         }
     }
 
     /**
      * Remove shopping cart for current customer
-     * DELETE /api/v1/order/{cartId}
+     * DELETE /api/v1/order/{customerId}
      */
-    @DeleteMapping("/{cartId}")
-    public ResponseEntity<Map<String, Object>> removeCart(@PathVariable Long cartId) {
+    @DeleteMapping("/{customerId}")
+    public ResponseEntity<Map<String, Object>> removeCart(@PathVariable String customerId) {
         try {
-            if (!isValidCartId(cartId)) {
-                return createCartValidationErrorResponse("Cart ID", "must be a positive number");
+            if (!isValidCustomerId(customerId)) {
+                return createCartValidationErrorResponse("Customer ID", "must be between 1 and 50 characters");
             }
-            
-            log.info("Removing cart: {}", cartId);
-            cartService.removeCart(cartId);
+
+            CartResponse existingCart = cartService.getCartByCustomerId(customerId);
+            Long cartId = existingCart.getCartId();
+
+            log.info("Removing cart: {} (customer: {})", cartId, customerId);
+            cartService.removeCart(customerId);
             return sendNoContentResponse("Cart removed successfully");
         } catch (CartNotFoundException e) {
-            log.error("Cart not found: {}", e.getMessage());
+            log.error("Cart not found for customer {}: {}", customerId, e.getMessage());
             return sendNotFoundResponse(e.getMessage());
         } catch (Exception e) {
-            log.error("Error removing cart {}: {}", cartId, e.getMessage());
+            log.error("Error removing cart for customer {}: {}", customerId, e.getMessage());
             return sendInternalServerErrorResponse("Failed to remove cart due to an unexpected error");
         }
     }

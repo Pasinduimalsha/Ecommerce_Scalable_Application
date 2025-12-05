@@ -4,7 +4,7 @@ import com.pasi.product_service.dto.ProductCreatedEvent;
 import com.pasi.product_service.dto.ProductDTO;
 import com.pasi.product_service.dto.ReviewStatusDTO;
 import com.pasi.product_service.entity.Product;
-import com.sysco.product_service.exception.*;
+import com.pasi.product_service.exception.*;
 import com.pasi.product_service.mapper.ProductMapper;
 import com.pasi.product_service.repository.ProductRepository;
 import com.pasi.product_service.service.EventPublisher;
@@ -51,29 +51,8 @@ public class ProductServiceImpl implements ProductService {
             Product savedProduct = productRepository.save(product);
             log.info("Product created successfully with ID: {}", savedProduct.getId());
 
-            // Publish ProductCreatedEvent to RabbitMQ for inventory creation
-            try {
-                ProductCreatedEvent event = ProductCreatedEvent.builder()
-                        .productId(savedProduct.getId().toString())
-                        .sku(savedProduct.getSku())
-                        .name(savedProduct.getName())
-                        .price(savedProduct.getPrice())
-                        .description(savedProduct.getDescription())
-                        .brand(savedProduct.getBrand())
-                        .categoryName(savedProduct.getCategory() != null ? savedProduct.getCategory().getName() : null)
-                        .initialQuantity(savedProduct.getStockQuantity() != null ? savedProduct.getStockQuantity() : 0)
-                        .timestamp(LocalDateTime.now())
-                        .build();
-
-                eventPublisher.publishProductCreatedEvent(event);
-                log.info("Successfully published ProductCreatedEvent for SKU: {}", savedProduct.getSku());
-                
-            } catch (Exception e) {
-                log.error("Failed to publish ProductCreatedEvent for SKU: {} - Error: {}", 
-                         savedProduct.getSku(), e.getMessage());
-                // Note: We don't fail the product creation if event publishing fails
-                // The product is still created, but inventory creation might need manual intervention
-            }
+            // NOTE: Do NOT publish inventory creation event here. Inventory entries should be
+            // created only when a product is APPROVED. Publishing is handled in `reviewProduct`.
 
             ProductDTO createdProductDTO = productMapper.toCreatedProduct(savedProduct);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdProductDTO);
@@ -113,7 +92,6 @@ public class ProductServiceImpl implements ProductService {
             existingProduct.setBrand(productDTO.getBrand());
             existingProduct.setImageUrl(productDTO.getImageUrl());
             existingProduct.setSku(productDTO.getSku());
-            existingProduct.setStockQuantity(productDTO.getStockQuantity());
             
             // Update category if provided (by name)
             if (productDTO.getCategoryName() != null && !productDTO.getCategoryName().trim().isEmpty() && 
@@ -290,10 +268,27 @@ public class ProductServiceImpl implements ProductService {
             // This could be done by adding fields to the Product entity or creating a separate ProductReview entity
             
             Product savedProduct = productRepository.save(product);
-            
+
             log.info("Product ID: {} status updated to: {} with comment: '{}' by reviewer: {}", 
                     reviewStatusDTO.getProductId(), newStatus, 
                     reviewStatusDTO.getReviewComment(), reviewStatusDTO.getReviewedBy());
+
+            // If product approved, publish ProductCreatedEvent containing only SKU and stock quantity
+            if (newStatus == Product.Status.APPROVED) {
+                try {
+                    Integer qty = reviewStatusDTO.getInitialStock() != null ? reviewStatusDTO.getInitialStock() : 0;
+                    ProductCreatedEvent event = ProductCreatedEvent.builder()
+                            .sku(savedProduct.getSku())
+                            .stockQuantity(qty)
+                            .build();
+
+                    eventPublisher.publishProductCreatedEvent(event);
+                    log.info("Published ProductCreatedEvent for SKU: {} with quantity: {}", savedProduct.getSku(), qty);
+                } catch (Exception e) {
+                    log.error("Failed to publish ProductCreatedEvent for SKU: {} - Error: {}", savedProduct.getSku(), e.getMessage(), e);
+                    // Do not block approval; inventory can be reconciled or retried later
+                }
+            }
 
             ProductDTO productDTO = productMapper.toCreatedProduct(savedProduct);
             return ResponseEntity.ok(productDTO);

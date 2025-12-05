@@ -8,13 +8,11 @@ public interface CartService {
     
     CartResponse createCart(CreateCartRequest request);
     
-    CartResponse addItemToCart(Long cartId, AddItemToCartRequest request);
-    
-    CartResponse getCartById(Long cartId);
-    
-    void removeItemFromCart(Long cartId, String skuCode);
-    
-    void removeCart(Long cartId);
+    CartResponse addItemToCart(String customerId, AddItemToCartRequest request);
     
     CartResponse getCartByCustomerId(String customerId);
+    
+    void removeItemFromCart(String customerId, String skuCode);
+    
+    void removeCart(String customerId);
 }

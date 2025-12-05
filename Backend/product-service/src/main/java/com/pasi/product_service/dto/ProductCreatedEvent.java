@@ -1,28 +1,19 @@
 package com.pasi.product_service.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductCreatedEvent {
-    private String productId;
+    @NotNull(message = "Sku code is required")
     private String sku;
-    private String name;
-    private BigDecimal price;
-    private String description;
-    private String brand;
-    private String categoryName;
-    private Integer initialQuantity;
-    
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime timestamp;
+
+    @NotNull(message = "Stock quantity is required")
+    private Integer stockQuantity;
 }

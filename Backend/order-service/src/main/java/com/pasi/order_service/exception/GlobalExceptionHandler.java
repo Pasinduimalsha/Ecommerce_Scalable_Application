@@ -88,4 +88,16 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleProductNotFoundException(ProductNotFoundException ex) {
+        log.error("Product not found: {}", ex.getMessage());
+        Map<String, Object> errorResponse = Map.of(
+                STATUS_KEY, HttpStatus.NOT_FOUND.value(),
+                MESSAGE_KEY, ex.getMessage(),
+                TIMESTAMP_KEY, LocalDateTime.now().toString(),
+                PATH_KEY, "/api/v1/order"
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
 }

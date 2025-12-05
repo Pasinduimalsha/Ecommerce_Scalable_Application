@@ -16,10 +16,11 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     
     Optional<CartItem> findByCartIdAndSkuCode(Long cartId, String skuCode);
     
-    @Query("SELECT ci FROM CartItem ci WHERE ci.cart.id = :cartId AND ci.skuCode = :skuCode")
-    Optional<CartItem> findByCartIdAndSkuCodeWithCart(@Param("cartId") Long cartId, @Param("skuCode") String skuCode);
-    
-    void deleteByCartIdAndSkuCode(Long cartId, String skuCode);
-    
-    void deleteByCartId(Long cartId);
+    @Query("SELECT ci FROM CartItem ci JOIN ci.cart c WHERE c.customerId = :customerId AND ci.skuCode = :skuCode")
+    Optional<CartItem> findItemByCustomerIdAndSkuCode(@Param("customerId") String customerId, @Param("skuCode") String skuCode);
+
+    @Query("SELECT ci FROM CartItem ci JOIN ci.cart c WHERE c.customerId = :customerId AND ci.skuCode IN :skuCodes")
+            List<CartItem> findItemsByCustomerIdAndSkuCodes(@Param("customerId") String customerId,
+            @Param("skuCodes") List<String> skuCodes);
+
 }
